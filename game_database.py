@@ -1,4 +1,6 @@
 import json
+import os.path
+from datetime import date, timedelta
 from pathlib import Path
 import aiohttp
 import asyncio
@@ -39,4 +41,43 @@ async def update_game_files(start, end, game_type):
         await asyncio.gather(*tasks)
 
 
-asyncio.run(update_game_files("2025-01-01", "2025-04-17", "R"))
+def team_playing(team, game_data):
+    teams = game_data['gameData']['teams']
+    return teams['away']['teamCode'] == team or teams['home']['teamCode'] == team
+
+
+def load_games_on_date_json(date, team=None):
+    games = []
+
+    date_folder = Path(f"games/{date}")
+    if not os.path.exists(date_folder):
+        return games
+
+    for file in date_folder.iterdir():
+        with open(file, "r") as game_file:
+            game_data = json.load(game_file)
+            if team is None or team_playing(team, game_data):
+                games.append(game_data)
+    return games
+
+
+def get_date(date_str):
+    return date(*map(int, date_str.split("-")))
+
+
+def load_games(start_date, end_date):
+    curr = get_date(start_date)
+    end = get_date(end_date)
+
+    while curr <= end:
+        for game in load_games_on_date_json(curr):
+            yield game
+        curr = curr + timedelta(days=1)
+
+
+def game_plays(game_data):
+    return game_data['liveData']['plays']['allPlays']
+
+if __name__ == "__main__":
+    pass
+    # load_games("2025-03-14", "2025-03-19")
