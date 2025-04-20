@@ -46,38 +46,47 @@ def team_playing(team, game_data):
     return teams['away']['teamCode'] == team or teams['home']['teamCode'] == team
 
 
-def load_games_on_date_json(date, team=None):
-    games = []
-
+def games_on_date(date, team=None):
     date_folder = Path(f"games/{date}")
     if not os.path.exists(date_folder):
-        return games
+        return
 
     for file in date_folder.iterdir():
         with open(file, "r") as game_file:
             game_data = json.load(game_file)
             if team is None or team_playing(team, game_data):
-                games.append(game_data)
-    return games
+                yield game_data
 
+
+def get_game_pk(game):
+    return game['gameData']['game']['pk']
+
+def get_game_state(game):
+    return game['gameData']['status']['abstractGameState']
+
+def game_plays(game_data):
+    return game_data['liveData']['plays']['allPlays']
 
 def get_date(date_str):
     return date(*map(int, date_str.split("-")))
 
 
-def load_games(start_date, end_date):
+def games_in_date_range(start_date, end_date):
     curr = get_date(start_date)
     end = get_date(end_date)
+    games = set()
 
     while curr <= end:
-        for game in load_games_on_date_json(curr):
-            yield game
+        for game in games_on_date(curr):
+            pk = get_game_pk(game)
+            state = get_game_state(game)
+            if state == 'Final' and pk not in games:
+                yield game
+                games.add(pk)
         curr = curr + timedelta(days=1)
 
 
-def game_plays(game_data):
-    return game_data['liveData']['plays']['allPlays']
-
 if __name__ == "__main__":
-    pass
-    # load_games("2025-03-14", "2025-03-19")
+    # asyncio.run(update_game_files('2025-04-19', '2025-04-19', 'R'))
+    for game in games_in_date_range("2025-03-14", "2025-04-19"):
+        pass

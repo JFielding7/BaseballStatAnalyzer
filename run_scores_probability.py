@@ -1,4 +1,6 @@
-from game_database import load_games
+from collections import defaultdict
+
+from game_database import games_in_date_range, games_on_date
 
 
 def get_outs(play):
@@ -69,10 +71,41 @@ def runner_scores_games_ratio(games, runner_predicate):
     return scores, attempts
 
 
+def get_innings(game):
+    return game['liveData']['linescore']['innings']
+
+
+def update_inning_stats(stats, inning, team):
+    half = inning[team]
+    if 'runs' in half:
+        runs = half['runs']
+        stats['innings_scored_in'] += runs > 0
+        stats['total_innings'] += 1
+        stats['runs'] += runs
+        stats[f'{team}_team_runs'] += runs
+
+
+def inning_stats(games):
+    stats = defaultdict(int)
+
+    for game in games:
+        for inning in get_innings(game):
+            update_inning_stats(stats, inning, 'away')
+            update_inning_stats(stats, inning, 'home')
+        stats['games'] += 1
+
+    return stats
+
+
 def second_no_outs(play, runner):
     outs = get_outs(play)
     base = get_runner_end_base(runner)
     return outs == 0 and base == '2B'
+
+def third_one_out(play, runner):
+    outs = get_outs(play)
+    base = get_runner_end_base(runner)
+    return outs == 1 and base == '3B'
 
 def third_less_than_2_outs(play, runner):
     outs = get_outs(play)
@@ -89,8 +122,16 @@ def team_third_less_than_2_outs(is_away):
 
 
 if __name__ == "__main__":
-    scores, attempts = runner_scores_games_ratio(
-        load_games("2025-02-19", "2025-04-19"),
-        third_no_outs
-    )
-    print(f"{scores}/{attempts} : {scores / attempts * 100:.4f}%")
+    stats = inning_stats(games_in_date_range('2025-01-01', '2025-04-19'))
+    scores = stats['innings_scored_in']
+    attempts = stats['total_innings']
+    runs = stats['runs']
+    print(runs / stats['games'] / 2)
+    print(f"Home team runs/g: {stats['home_team_runs'] / stats['games']}")
+    print(f"Away team runs/g: {stats['away_team_runs'] / stats['games']}")
+    print(f"Games: {stats['games']}")
+    # scores, attempts = runner_scores_games_ratio(
+    #     games_in_date_range("2025-02-19", "2025-04-19"),
+    #     third_no_outs
+    # )
+    print(f"{scores}/{attempts}: {scores / attempts * 100:.4f}%")
