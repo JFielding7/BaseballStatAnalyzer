@@ -4,7 +4,6 @@ import aiohttp
 import asyncio
 
 async def fetch_game_details(session, date_folder, game_pk):
-    print(game_pk)
     url = f"https://statsapi.mlb.com/api/v1.1/game/{game_pk}/feed/live"
 
     async with session.get(url) as res:
@@ -40,4 +39,4 @@ async def update_game_files(start, end, game_type):
         await asyncio.gather(*tasks)
 
 
-asyncio.run(update_game_files("2025-04-18", "2025-04-18", "R"))
+asyncio.run(update_game_files("2025-01-01", "2025-04-17", "R"))
